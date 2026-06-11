@@ -5,74 +5,74 @@ import { rateLimit } from 'express-rate-limit';
 import jwt from "jsonwebtoken";
 import { connect, model, Schema } from 'mongoose';
 
-//------------------------------------------- Array de productos 
+//------------------------------------------- Array de libros 
 
-// const products = [
+// const books = [
 //   {
 //     id: 1,
-//     name: "Tablet Samsung Galaxy Tab A9",
-//     price: 320000,
-//     category: "Tablets",
-//     stock: 14,
-//     available: true,
+//     title: "El nombre del viento",
+//     price: 15000,
+//     genre: "Fantasía",
+//     pages: 662,
+//     read: true
 //   },
 //   {
 //     id: 2,
-//     name: "Smart TV LG 50 pulgadas 4K",
-//     price: 780000,
-//     category: "Televisores",
-//     stock: 6,
-//     available: true,
+//     title: "1984",
+//     price: 12000,
+//     genre: "Distopía",
+//     pages: 328,
+//     read: true
 //   },
 //   {
 //     id: 3,
-//     name: "Parlante Bluetooth Sony SRS-XB13",
-//     price: 89000,
-//     category: "Audio",
-//     stock: 20,
-//     available: true,
+//     title: "El código Da Vinci",
+//     price: 13500,
+//     genre: "Thriller",
+//     pages: 489,
+//     read: false
 //   },
 //   {
 //     id: 4,
-//     name: "Router TP-Link Archer C6",
-//     price: 67000,
-//     category: "Redes",
-//     stock: 11,
-//     available: true,
+//     title: "Cien años de soledad",
+//     price: 14000,
+//     genre: "Realismo mágico",
+//     pages: 471,
+//     read: true
 //   },
 //   {
 //     id: 5,
-//     name: "Cámara de Seguridad Xiaomi Mi Home",
-//     price: 125000,
-//     category: "Seguridad",
-//     stock: 0,
-//     available: false,
+//     title: "Harry Potter y la piedra filosofal",
+//     price: 11000,
+//     genre: "Fantasía",
+//     pages: 309,
+//     read: true
 //   },
 //   {
 //     id: 6,
-//     name: "Smartwatch Amazfit Bip 5",
-//     price: 145000,
-//     category: "Wearables",
-//     stock: 18,
-//     available: true,
+//     title: "El principito",
+//     price: 8000,
+//     genre: "Literatura infantil",
+//     pages: 96,
+//     read: false
 //   },
 //   {
 //     id: 7,
-//     name: "Impresora HP DeskJet 2875",
-//     price: 159000,
-//     category: "Periféricos",
-//     stock: 4,
-//     available: true,
+//     title: "Dune",
+//     price: 16000,
+//     genre: "Ciencia ficción",
+//     pages: 896,
+//     read: false
 //   },
 //   {
 //     id: 8,
-//     name: "Consola Xbox Series S",
-//     price: 690000,
-//     category: "Gaming",
-//     stock: 3,
-//     available: true,
-//   },
-// ];
+//     title: "El alquimista",
+//     price: 10000,
+//     genre: "Ficción filosófica",
+//     pages: 208,
+//     read: true
+//   }
+// ]
 
  // Array de Usuarios
 
@@ -106,19 +106,19 @@ const userSchema = new Schema({
 // modelos para utilizar la db
 const User = model("User", userSchema)
 
-const productSchema = new Schema({
-  name: { type: String, required: true },
+const bookSchema = new Schema({
+  title: { type: String, required: true },
   price: { type: Number, default: 0 },
-  category: { type: String, default: "Sin categoria" },
-  stock: { type: Number, default: 0 },
-  available: { type: Boolean, default: false },
+  genre: { type: String, default: "Sin género" },
+  pages: { type: Number, default: 0 },
+  read: { type: Boolean, default: false },
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true }
 }, {
   versionKey: false,
   timestamps: true
 })
 
-const Product = model("Product", productSchema)
+const Book = model("Book", bookSchema)
 // -----------------------------------------------------  FIN MONGODB
 
 const server = express();
@@ -173,109 +173,110 @@ server.get("/", (req, res) => {
   })
 })
 
-// Obtener TODOS los productos
+// Obtener TODOS los libros
 
-server.get("/products", authMiddleware, async (req, res) => {
+server.get("/books", authMiddleware, async (req, res) => {
    try {
     const userLogged = req.userLogged
-    const filterProducts = await Product.find({ userId: userLogged.id })
+    const filterBooks = await Book.find({ userId: userLogged.id })
     res.json({
       success: true,
-      data: filterProducts,
-      message: "Producst fetched successfully"
+      data: filterBooks,
+      message: "Books fetched successfully"
     })
   } catch (error) {
-    res.status(500).json({ success: false, error: "Error fetching products" })
+    res.status(500).json({ success: false, error: "Error fetching books" })
   }
 })
 
-// Obtener UN producto por su ID
+// Obtener UN libro por su ID
 
-server.get("/products/:id", authMiddleware, async (req, res) => {
+server.get("/books/:id", authMiddleware, async (req, res) => {
     try {
-        const id = Number(req.params.id);
-        const foundProduct = await Product.findById(id);
-        if (!foundProduct) return res.status(404).json({ error: "Not found" }); // Le agregué return al if para que corte la ejecución cuando no encuentra el producto
-    res.json(foundProduct)
+        const { id } = req.params;
+        const foundBook = await Book.findById(id);
+        if (!foundBook) return res.status(404).json({ error: "Not found" }); // Le agregué return al if para que corte la ejecución cuando no encuentra el libro
+    res.json(foundBook)
     } catch (error) {
     res.status(400).json({ error: "Invalid ID format" })
   }
 });
 
-// Agregar un producto
+// Agregar un libro
 
-server.post("/products", authMiddleware, async (req, res) => {
+server.post("/books", authMiddleware, async (req, res) => {
   try {
     const body = req.body
     const userLogged = req.userLogged
 
-    const newProduct = await Product.create({
-      name: body.name,
+    const newBook = await Book.create({
+      title: body.title,
       price: body.price,
-      category: body.category,
-      stock: body.stock,
-      available: body.stock > 0,
+      genre: body.genre,
+      pages: body.pages,
+      read: body.read ?? false,
       userId: userLogged.id
     })
 
-    newProduct.save()
+    newBook.save()
 
-    const publicDataProduct = {
-      id: newProduct._id,
-      name: newProduct.name,
-      price: newProduct.price,
-      category: newProduct.category,
-      stock: newProduct.stock,
-      available: newProduct.available,
-      createdAt: newProduct.createdAt,
-      updatedAt: newProduct.updatedAt
+    const publicDataBook = {
+      id: newBook._id,
+      title: newBook.title,
+      price: newBook.price,
+      genre: newBook.genre,
+      pages: newBook.pages,
+      read: newBook.read,
+      createdAt: newBook.createdAt,
+      updatedAt: newBook.updatedAt
     }
 
     res.json({
       success: true,
-      data: publicDataProduct,
-      message: "Product created successfully"
+      data: publicDataBook,
+      message: "Book created successfully"
     })
   } catch (error) {
-    res.status(500).json({ success: false, error: "Error creating product" })
+    res.status(500).json({ success: false, error: "Error creating book" })
   }
 })
 
-// Actualizar un producto por ID
+// Actualizar un libro por ID
 
-server.put("/products/:id", authMiddleware, async (req, res) => {
-    try {
-const { id } = req.params
-  const body = req.body
+server.put("/books/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params
+    const body = req.body
 
-  const updatedProduct = await Product.findByIdAndUpdate(id, { ...body, available: body.stock > 0 }, { new: true })
-    if (!updatedProduct) {
-      return res.status(404).json({ success: false, error: "Product not found" })
+    const updatedBook = await Book.findByIdAndUpdate(id, body, { new: true })
+
+    if (!updatedBook) {
+      return res.status(404).json({ success: false, error: "Book not found" })
     }
 
     res.json({
       success: true,
-      data: updatedProduct,
-      message: "Product updated successfully"
+      data: updatedBook,
+      message: "Book updated successfully"
     })
   } catch (error) {
     res.status(400).json({ success: false, error: "Invalid ID format" })
   }
 })
 
-// Eliminar UN producto por su ID
+// Eliminar UN libro por su ID
 
-server.delete("/products/:id", authMiddleware, async (req, res) => {
+server.delete("/books/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params
 
-    const deletedProduct = await Product.findByIdAndDelete(id)
+    const deletedBook = await Book.findByIdAndDelete(id)
 
-    if (!deletedProduct) {
-      return res.status(404).json({ success: false, error: "Product not found" })
+    if (!deletedBook) {
+      return res.status(404).json({ success: false, error: "Book not found" })
     }
 
-    res.json({ success: true, data: deletedProduct, message: "Product deleted successfully" })
+    res.json({ success: true, data: deletedBook, message: "Book deleted successfully" })
   } catch (error) {
     res.status(400).json({ success: false, error: "Invalid ID format" })
   }
