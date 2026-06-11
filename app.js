@@ -1,8 +1,9 @@
 import "dotenv/config";
 import express from "express";
-import bcrypt, { hash } from "bcryptjs";
+import bcrypt from "bcryptjs";
 import { rateLimit } from "express-rate-limit";
 import jwt from "jsonwebtoken";
+import cors from "cors";
 import { connect, model, Schema } from "mongoose";
 
 // Conexión a Base de Datos
@@ -50,6 +51,7 @@ const Book = model("Book", bookSchema);
 
 const server = express();
 
+server.use(cors());
 server.use(express.json()); // Permite que las peticiones puedan enviar body JSON
 
 const PORT = process.env.PORT;
@@ -99,7 +101,7 @@ server.get("/", (req, res) => {
 // ----- Libros -----
 // Obtener TODOS los libros
 
-server.get("/books", authMiddleware, async (req, res) => {
+server.get("/api/books", authMiddleware, async (req, res) => {
   try {
     const userLogged = req.userLogged;
     const filterBooks = await Book.find({ userId: userLogged.id });
@@ -115,20 +117,39 @@ server.get("/books", authMiddleware, async (req, res) => {
 
 // Obtener UN libro por su ID
 
-server.get("/books/:id", authMiddleware, async (req, res) => {
+server.get("/api/books/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const foundBook = await Book.findById(id);
-    if (!foundBook) return res.status(404).json({ error: "Not found" }); // Return dentro de if corta la ejecución cuando no encuentra el libro
-    res.json(foundBook);
+
+    // Protección por usuario:
+// Verifica que el libro pertenezca al usuario autenticado
+    const foundBook = await Book.findOne({
+      _id: id,
+      userId: req.userLogged.id,
+    });
+
+    if (!foundBook) {
+      return res.status(404).json({
+        success: false,
+        error: "Book not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: foundBook,
+    });
   } catch (error) {
-    res.status(400).json({ error: "Invalid ID format" });
+    res.status(400).json({
+      success: false,
+      error: "Invalid ID format",
+    });
   }
 });
 
 // Agregar un libro
 
-server.post("/books", authMiddleware, async (req, res) => {
+server.post("/api/books", authMiddleware, async (req, res) => {
   try {
     const body = req.body;
     const userLogged = req.userLogged;
@@ -141,8 +162,6 @@ server.post("/books", authMiddleware, async (req, res) => {
       read: body.read ?? false, // read no debe depender de pages, el usuario decide si lo leyó
       userId: userLogged.id,
     });
-
-    newBook.save();
 
     const publicDataBook = {
       id: newBook._id,
@@ -167,12 +186,20 @@ server.post("/books", authMiddleware, async (req, res) => {
 
 // Actualizar un libro por ID
 
-server.put("/books/:id", authMiddleware, async (req, res) => {
+server.patch("/api/books/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body;
 
-    const updatedBook = await Book.findByIdAndUpdate(id, body, { new: true }); // pasando body directamente, el usuario manda exactamente lo que quiere actualizar (read es una decisión del usuario, no una consecuencia de otro campo)
+ // Solo permite modificar libros creados por el usuario autenticado
+const updatedBook = await Book.findOneAndUpdate(
+  {
+    _id: id,
+    userId: req.userLogged.id,
+  },
+  body,
+  { new: true }
+); // pasando body directamente, el usuario manda exactamente lo que quiere actualizar (read es una decisión del usuario, no una consecuencia de otro campo)
 
     if (!updatedBook) {
       return res.status(404).json({ success: false, error: "Book not found" });
@@ -190,11 +217,15 @@ server.put("/books/:id", authMiddleware, async (req, res) => {
 
 // Eliminar UN libro por su ID
 
-server.delete("/books/:id", authMiddleware, async (req, res) => {
+server.delete("/api/books/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deletedBook = await Book.findByIdAndDelete(id);
+ // Solo permite eliminar libros asociados al usuario autenticado
+const deletedBook = await Book.findOneAndDelete({
+  _id: id,
+  userId: req.userLogged.id,
+});
 
     if (!deletedBook) {
       return res.status(404).json({ success: false, error: "Book not found" });
@@ -213,7 +244,7 @@ server.delete("/books/:id", authMiddleware, async (req, res) => {
 // ----- Usuarios -----
 // Registro
 
-server.post("/auth/register", async (req, res) => {
+server.post("/api/auth/register", async (req, res) => {
   try {
     const { body } = req;
     const { password, username, email } = body;
@@ -245,8 +276,6 @@ server.post("/auth/register", async (req, res) => {
       password: hashPassword,
     });
 
-    newUser.save();
-
     const publicDataUser = {
       id: newUser._id,
       username: newUser.username,
@@ -267,7 +296,7 @@ server.post("/auth/register", async (req, res) => {
 
 // Login
 
-server.post("/auth/login", limiter, async (req, res) => {
+server.post("/api/auth/login", limiter, async (req, res) => {
   // limiter → middleware local (en este caso)
   try {
     const { body } = req;
