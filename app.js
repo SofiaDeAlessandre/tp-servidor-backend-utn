@@ -1,4 +1,7 @@
 import express from "express";
+import bcrypt, { hash } from 'bcryptjs';
+import { rateLimit } from 'express-rate-limit'
+import jwt from "jsonwebtoken"
 
 // Array de productos
 
@@ -69,12 +72,31 @@ const products = [
   },
 ];
 
+// Array de Usuarios
+
+const users = []
+
+
 const server = express();
 
-// Permite que las peticiones puedan enviar body JSON
-server.use(express.json());
+server.use(express.json()); // Permite que las peticiones puedan enviar body JSON
 
 const PORT = 3001;
+
+// Middleware
+// Middleware global → aplica a todas las request → server.use(limiter)
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  limit: 5, 
+
+  handler: (req, res) => {
+    res.status(429).json({ error: "Too many requests, please try again later." })
+  }
+})
+
+// ----------------------------------
+
 
 server.get("/", (req, res) => {
   res.json({ data: 1 });
@@ -110,10 +132,10 @@ server.post("/products", (req, res) => {
 // Actualizar un producto por ID
 
 server.put("/products/:id", (req, res) => {
-  const id = +req.params.id;
+  const { id } = req.params;
   const body = req.body;
 
-  const foundProduct = products.find((product) => product.id === id);
+  const foundProduct = products.find((product) => product.id === Number(id));
 
   if (body.name) foundProduct.name = body.name;
   if (body.price) foundProduct.price = body.price;
@@ -126,16 +148,82 @@ server.put("/products/:id", (req, res) => {
 // Eliminar UN producto por su ID
 
 server.delete("/products/:id", (req, res) => {
-  const id = +req.params.id;
-  const index = products.findIndex((product) => product.id === id);
+  const { id } = req.params
+  const index = products.findIndex(product => product.id === Number(id))
   if (index === -1) {
-    return res.status(404).json({ error: "Not found" });
+    return res.status(404).json({ error: "Not found" })
   }
-  products.splice(index, 1);
-  res.json({ message: "Producto eliminado" });
-});
+  products.splice(index, 1)
+  res.json({ message: "Producto eliminado" })
+})
 
-// Iniciar el servidor
+// ---------------------------- Usuarios
+// Registro
+
+server.post("/auth/register", async (req, res) => {
+  const { body } = req
+
+  const id = users.length + 1
+
+  const { password, username, email } = body
+  // AGREGAR ESTRUCTURA VALIDA DE EMAIL VALIDACION
+  const foundUser = users.find(user => user.email === email)
+
+  if (foundUser) {
+    return res.status(409).json({ error: "Conflict, user already exists" })
+  }
+
+  const hashPassword = await bcrypt.hash(password, 10)
+
+  const newUser = {
+    id,
+    username,
+    email,
+    password: hashPassword,
+  }
+
+  users.push(newUser)
+
+  const { password: passwordNewUser, ...data } = newUser
+
+  res.json(data)
+})
+
+// Login
+
+server.post("/auth/login", limiter, async (req, res) => { // limiter → middleware local (en este caso)
+  const { body, ip } = req
+
+  const { email, password } = body
+
+  if (!email || !password) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  const foundUser = users.find(user => user.email === email)
+
+  if (!foundUser) {
+    return res.status(403).json({ error: "Unauthorized" })
+  }
+
+  const isValid = await bcrypt.compare(password, foundUser.password)
+
+  if (!isValid) {
+    return res.status(403).json({ error: "Unauthorized" })
+  }
+
+  // TOKEN JWT → Json Web Token → string
+
+  const payload = { id: foundUser.id, username: foundUser.username, email: foundUser.email }
+  const secretKey = "contraseñasupersegurayprivadaquenadietienequeconocer" 
+
+  const token = jwt.sign(payload, secretKey, { expiresIn: "1m" })
+
+  res.json({ token })
+})
+
+
+// Servidor en escucha en el puerto seleccionado
 
 server.listen(PORT, () => {
   console.log(`Servidor en escucha por el puerto http://localhost:${PORT}`);
