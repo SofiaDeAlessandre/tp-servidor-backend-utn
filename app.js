@@ -95,35 +95,67 @@ const limiter = rateLimit({
   }
 })
 
+// --------------------NUEVO
+
+const authMiddleware = (req, res, next) => {
+  const header = req.headers.authorization
+  console.log(header)
+
+
+  if (!header || !header.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  const token = header.split(" ")[1]
+
+  try {
+    const decoded = jwt.verify(token, "contraseñasupersegurayprivadaquenadietienequeconocer")
+
+    req.userLogged = decoded
+
+    next()
+  } catch (e) {
+    res.status(401).json({ error: e.message })
+  }
+}
+
+// server.use(authMiddleware)
+
 // ----------------------------------
 
+// Status
 
 server.get("/", (req, res) => {
-  res.json({ data: 1 });
-});
+  res.status(500).json({ status: "off" })
+})
 
 // Obtener TODOS los productos
 
-server.get("/products", (req, res) => {
-  res.json(products);
-});
+server.get("/products", authMiddleware, (req, res) => {
+  const userLogged = req.userLogged
+  const filterProducts = products.filter(product => product.userId === userLogged.id)
+  res.json(filterProducts)
+})
 
 // Obtener UN producto por su ID
 
-server.get("/products/:id", (req, res) => {
+server.get("/products/:id", authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const foundProduct = products.find((product) => product.id === id); // Return implícito de Arrow Function
-  if (!foundProduct) res.status(404).json({ error: "Not found" }); // Return implícito
-  res.json(foundProduct);
+  if (!foundProduct) return res.status(404).json({ error: "Not found" }) // Le agregué return al if para que corte la ejecución cuando no encuentra el producto
+res.json(foundProduct)
 });
 
 // Agregar un producto
 
-server.post("/products", (req, res) => {
+server.post("/products", authMiddleware, (req, res) => {
   const body = req.body;
+   const userLogged = req.userLogged
+
   const newProduct = {
     id: products.length + 1,
     ...body,
+    userId: userLogged.id
   };
   products.push(newProduct);
   res.json(newProduct);
@@ -131,28 +163,71 @@ server.post("/products", (req, res) => {
 
 // Actualizar un producto por ID
 
-server.put("/products/:id", (req, res) => {
-  const { id } = req.params;
-  const body = req.body;
+// server.put("/products/:id", authMiddleware, (req, res) => {
+//   const { id } = req.params;
+//   const body = req.body;
 
-  const foundProduct = products.find((product) => product.id === Number(id));
+//   const foundProduct = products.find((product) => product.id === Number(id));
 
-  if (body.name) foundProduct.name = body.name;
-  if (body.price) foundProduct.price = body.price;
-  if (body.category) foundProduct.category = body.category;
-  if (body.stock) foundProduct.stock = body.stock;
-  if (body.available) foundProduct.available = body.available;
-  res.json(foundProduct);
-});
+//   if (body.name) foundProduct.name = body.name;
+//   if (body.price) foundProduct.price = body.price;
+//   if (body.category) foundProduct.category = body.category;
+//   if (body.stock) foundProduct.stock = body.stock;
+//   if (body.available) foundProduct.available = body.available;
+//   res.json(foundProduct);
+// });
+
+// FIX
+
+server.put("/products/:id", authMiddleware, (req, res) => {
+  const { id } = req.params
+  const body = req.body
+  const userLogged = req.userLogged
+
+  const foundProduct = products.find((product) => product.id === Number(id))
+
+  if (!foundProduct) {
+    return res.status(404).json({ error: "Not found" })
+  }
+
+  if (foundProduct.userId !== userLogged.id) { // Verificar que el producto pertenezca al usuario logueado antes de actualizar.
+    return res.status(403).json({ error: "Forbidden" })
+  }
+
+  if (body.name) foundProduct.name = body.name
+  if (body.price) foundProduct.price = body.price
+  if (body.category) foundProduct.category = body.category
+  if (body.stock) foundProduct.stock = body.stock
+  if (body.available) foundProduct.available = body.available
+  res.json(foundProduct)
+})
 
 // Eliminar UN producto por su ID
 
-server.delete("/products/:id", (req, res) => {
+// server.delete("/products/:id", authMiddleware, (req, res) => {
+//   const { id } = req.params
+//   const index = products.findIndex(product => product.id === Number(id))
+//   if (index === -1) {
+//     return res.status(404).json({ error: "Not found" })
+//   }
+//   products.splice(index, 1)
+//   res.json({ message: "Producto eliminado" })
+// })
+
+// FIX 
+server.delete("/products/:id", authMiddleware, (req, res) => {
   const { id } = req.params
+  const userLogged = req.userLogged
   const index = products.findIndex(product => product.id === Number(id))
+  
   if (index === -1) {
     return res.status(404).json({ error: "Not found" })
   }
+
+  if (products[index].userId !== userLogged.id) { // Verificar que el producto pertenezca al usuario logueado antes de borrar.
+    return res.status(403).json({ error: "Forbidden" })
+  }
+
   products.splice(index, 1)
   res.json({ message: "Producto eliminado" })
 })
@@ -220,7 +295,7 @@ server.post("/auth/login", limiter, async (req, res) => { // limiter → middlew
   const token = jwt.sign(payload, secretKey, { expiresIn: "1m" })
 
   res.json({ token })
-})
+ })
 
 
 // Servidor en escucha en el puerto seleccionado
