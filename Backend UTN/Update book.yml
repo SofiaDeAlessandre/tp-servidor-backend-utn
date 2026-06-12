@@ -1,0 +1,27 @@
+info:
+  name: Update book
+  type: http
+  seq: 4
+
+http:
+  method: PATCH
+  url: http://localhost:3001/api/books/6a2b3cdc07b59f3d03e2a618
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Cambiando el nombre del libro",
+        "price": 5000,
+        "genre": "Clásico",
+        "pages": 70,
+        "read": true
+      }
+  auth:
+    type: bearer
+    token: ""
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

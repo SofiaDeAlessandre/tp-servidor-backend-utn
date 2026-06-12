@@ -15,6 +15,14 @@ const register = async (req, res) => {
         .json({ success: false, error: "Conflict, user already exists" });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email format.",
+      });
+    }
+
     const regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-]).{8,}$/;
     if (!regex.test(password)) {
       return res.status(400).json({

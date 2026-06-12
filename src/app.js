@@ -30,10 +30,19 @@ server.use(authMiddleware);
 // Rutas protegidas
 server.use("/api/books", BookRouter);
 
-// Servidor en escucha en el puerto seleccionado
-server.listen(PORT, () => {
-  connectDb();
-  console.log(`Servidor en escucha por el puerto http://localhost:${PORT}`);
-});
+// Inicia el servidor solo después de conectar a la base de datos
+
+const startServer = async () => {
+  try {
+    await connectDb();
+    server.listen(PORT, () => {
+      console.log(`Servidor en escucha por el puerto http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("No se pudo iniciar la aplicación");
+  }
+};
+
+startServer();
 
 export { server };

@@ -1,0 +1,26 @@
+info:
+  name: Create book
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: http://localhost:3001/api/books
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Cien años de soledad",
+        "price": 70000,
+        "genre": "Suspenso",
+        "pages": 10,
+        "read": true
+      }
+  auth:
+    type: bearer
+    token: ""
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

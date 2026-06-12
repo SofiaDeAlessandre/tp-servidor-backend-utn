@@ -1,0 +1,17 @@
+info:
+  name: Get book
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: http://localhost:3001/api/books/6a2b3cdc07b59f3d03e2a618
+  auth:
+    type: bearer
+    token: ""
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
