@@ -5,6 +5,7 @@ import { connectDb } from "./config/mongoDbConnection.js"
 import { AuthRouter } from "./routes/authRouter.js";
 import { BookRouter } from "./routes/bookRouter.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
+import { errorHandler } from "./middlewares/errorMiddleware.js";
 
 const server = express();
 
@@ -29,6 +30,9 @@ server.use(authMiddleware);
 
 // Rutas protegidas
 server.use("/api/books", BookRouter);
+
+// Manejo centralizado de errores — debe ir al final
+server.use(errorHandler);
 
 // Inicia el servidor solo después de conectar a la base de datos
 
