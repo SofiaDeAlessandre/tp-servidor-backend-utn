@@ -15,23 +15,6 @@ const register = async (req, res) => {
         .json({ success: false, error: "Conflict, user already exists" });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid email format.",
-      });
-    }
-
-    const regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-]).{8,}$/;
-    if (!regex.test(password)) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Invalid password. It must contain at least 8 characters, one uppercase letter, one number, and one special character.",
-      });
-    }
-
     const hashPassword = await bcrypt.hash(password, 10);
 
     // El primer usuario registrado es admin, el resto son user
@@ -68,10 +51,6 @@ const login = async (req, res) => {
     const { body } = req;
 
     const { email, password } = body;
-
-    if (!email || !password) {
-      return res.status(401).json({ success: false, error: "Unauthorized" });
-    }
 
     const foundUser = await User.findOne({ email });
 
