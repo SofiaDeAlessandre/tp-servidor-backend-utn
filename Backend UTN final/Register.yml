@@ -8,12 +8,13 @@ http:
   url: http://localhost:3001/api/auth/register
   body:
     type: json
-    data: |-
+    data: |+
       {
-        "username": "Sofia",
-        "email": "sofia@test.com",
+        "username": "Sofias",
+        "email": "sofias@test.com",
         "password": "Password123!"
       }
+
   auth: inherit
 
 settings:

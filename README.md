@@ -1,6 +1,6 @@
 # 📚 API REST - Gestor de Libros
 
-API REST desarrollada con Express y MongoDB que implementa autenticación con JWT y arquitectura MVC. Permite a usuarios registrados gestionar su lista de libros personal.
+API REST desarrollada con Express y MongoDB que implementa autenticación con JWT, roles de usuario, validación con Zod y arquitectura MVC. Permite a usuarios registrados gestionar su lista de libros personal.
 
 ---
 
@@ -14,6 +14,8 @@ API REST desarrollada con Express y MongoDB que implementa autenticación con JW
 - dotenv
 - cors
 - express-rate-limit
+- zod
+- morgan
 
 ---
 
@@ -33,18 +35,23 @@ servidor-backend-utn/
 │   │   └── bookControllers.js
 │   ├── middlewares/
 │   │   ├── authMiddleware.js
-│   │   └── limiterMiddleware.js
+│   │   ├── errorMiddleware.js
+│   │   ├── limiterMiddleware.js
+│   │   ├── roleMiddleware.js
+│   │   └── validateMiddleware.js
 │   ├── models/
 │   │   ├── BookModel.js
 │   │   └── UserModel.js
-│   └── routes/
-│       ├── authRouter.js
-│       └── bookRouter.js
+│   ├── routes/
+│   │   ├── authRouter.js
+│   │   └── bookRouter.js
+│   └── validators/
+│       ├── authValidator.js
+│       └── bookValidator.js
 ├── app.js
 ├── .env.example
 ├── .gitignore
 └── package.json
-
 ```
 
 ---
@@ -117,6 +124,19 @@ La contraseña debe tener al menos:
 
 ---
 
+## 👑 Roles de usuario
+
+- `user` → rol por defecto al registrarse
+- `admin` → el primer usuario registrado es admin automáticamente
+
+El token JWT incluye el rol del usuario y es verificado en cada request protegida.
+
+### Crear usuario administrador
+
+Por seguridad, el rol `admin` se asigna automáticamente al primer usuario registrado. Todos los demás usuarios reciben el rol `user`.
+
+---
+
 ## 📡 Endpoints
 
 ### Autenticación (públicos)
@@ -126,15 +146,31 @@ La contraseña debe tener al menos:
 | POST | `/api/auth/register` | Registra un nuevo usuario |
 | POST | `/api/auth/login` | Inicia sesión y devuelve token |
 
-### Libros (privados — requieren token)
+### Libros (privados — rol user)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/books` | Lista todos los libros del usuario |
+| GET | `/api/books` | Lista los libros del usuario autenticado |
 | GET | `/api/books/:id` | Obtiene un libro por ID |
 | POST | `/api/books` | Crea un nuevo libro |
 | PATCH | `/api/books/:id` | Actualiza un libro |
 | DELETE | `/api/books/:id` | Elimina un libro |
+
+### Libros (privados — solo rol admin)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/books/all` | Lista todos los libros de todos los usuarios |
+| DELETE | `/api/books/all/:id` | Elimina cualquier libro |
+
+### Query params opcionales
+
+| Param | Ejemplo | Descripción |
+|-------|---------|-------------|
+| `page` | `?page=2` | Número de página (default: 1) |
+| `limit` | `?limit=5` | Elementos por página (default: 10) |
+| `sort` | `?sort=desc` | Ordenamiento por título (asc/desc) |
+| `filter` | `?filter=genre:Terror` | Filtrado por campo:valor |
 
 ---
 
@@ -197,6 +233,36 @@ DELETE /api/books/:id
 Authorization: Bearer <token>
 ```
 
+### Obtener libros con filtros (query params)
+
+```
+GET /api/books?page=1&limit=5&sort=desc&filter=genre:Fantasía
+Authorization: Bearer <token>
+```
+
+### Obtener todos los libros (solo admin)
+
+```
+GET /api/books/all
+Authorization: Bearer <token admin>
+```
+
+---
+
+## ✅ Validación con Zod
+
+Todos los endpoints validan los datos entrantes con Zod. Si los datos son inválidos, se devuelve un error 400 con detalles del campo y mensaje:
+
+![Validación con Zod](./assets/bruno-error-contraseña-zod.png)
+
+---
+
+## 📊 Logger
+
+El servidor registra cada request en la terminal con morgan:
+
+![Logger morgan](./assets/logger.png)
+
 ---
 
 ## 📸 Colección Bruno
@@ -208,10 +274,12 @@ Authorization: Bearer <token>
 ![Bruno POST Create book](./assets/bruno-create-book.png)
 ![Bruno PATCH Update book](./assets/bruno-update-book.png)
 ![Bruno DEL Delete book](./assets/bruno-delete-book.png)
-![Bruno POST Register](./assets/bruno-register.png)
-![Bruno POST Login](./assets/bruno-login.png)
+![Bruno POST Register](./assets/bruno-post-register-final.png)
+![Bruno POST Login](./assets/bruno-post-login-final.png)
+![Bruno GET all books admin](./assets/bruno-get-books-all-admin-200-final.png)
+![Bruno GET all books user forbidden](./assets/bruno-get-books-all-user-403-final.png)
 
-La colección de pruebas se encuentra en el archivo `Backend UTN/` en la raíz del proyecto.
+La colección de pruebas se encuentra en la carpeta `Backend UTN/` en la raíz del proyecto.
 
 ---
 
@@ -221,5 +289,7 @@ No se realizó deploy. El proyecto puede ejecutarse localmente siguiendo las ins
 
 ---
 
-Sofía De Alessandre — Jun 2026
+Sofía De Alessandre — Jul 2026 (Actualizado para TP integrador final)
+
+
 
