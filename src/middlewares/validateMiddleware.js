@@ -1,7 +1,7 @@
 // Middleware genérico de validación con Zod
 const validate = (schema) => {
   return (req, res, next) => {
-       // safeParse valida sin tirar excepción:
+    // safeParse valida sin tirar excepción:
     // si falla devuelve los errores, si pasa reemplaza el body con los datos ya validados y tipados
     const result = schema.safeParse(req.body);
 
@@ -9,7 +9,7 @@ const validate = (schema) => {
       return res.status(400).json({
         success: false,
         error: "Validation error",
-        details: result.error.errors.map((e) => ({
+        details: result.error.issues.map((e) => ({
           field: e.path.join("."),
           message: e.message,
         })),
