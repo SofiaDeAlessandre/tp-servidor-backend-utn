@@ -5,13 +5,38 @@ import { Book } from "../models/BookModel.js";
 const getBooks = async (req, res) => {
   try {
     const userLogged = req.userLogged;
-    const filterBooks = await Book.find(
-      { userId: userLogged.id },
-      { userId: 0 },
-    );
+
+    // Query params opcionales
+    const { page = 1, limit = 10, sort = "asc", filter } = req.query;
+
+    // Filtrado base por usuario
+    const query = { userId: userLogged.id };
+
+    // Filtrado opcional: ?filter=genre:Fantasía
+    if (filter) {
+      const [field, value] = filter.split(":");
+      query[field] = value;
+    }
+
+    // Ordenamiento por título
+    const sortOrder = sort === "desc" ? -1 : 1;
+
+    // Paginación
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const filterBooks = await Book.find(query, { userId: 0 })
+      .sort({ title: sortOrder })
+      .skip(skip)
+      .limit(Number(limit));
+
     res.json({
       success: true,
       data: filterBooks,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: await Book.countDocuments(query),
+      },
       message: "Books fetched successfully",
     });
   } catch (error) {
@@ -145,10 +170,35 @@ const deleteBook = async (req, res) => {
 // Obtener TODOS los libros (admin)
 const getAllBooks = async (req, res) => {
   try {
-    const filterBooks = await Book.find({}, { userId: 0 });
+    // Query params opcionales
+    const { page = 1, limit = 10, sort = "asc", filter } = req.query;
+
+    // Filtrado opcional: ?filter=genre:Fantasía
+    const query = {};
+    if (filter) {
+      const [field, value] = filter.split(":");
+      query[field] = value;
+    }
+
+    // Ordenamiento por título
+    const sortOrder = sort === "desc" ? -1 : 1;
+
+    // Paginación
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const filterBooks = await Book.find(query, { userId: 0 })
+      .sort({ title: sortOrder })
+      .skip(skip)
+      .limit(Number(limit));
+
     res.json({
       success: true,
       data: filterBooks,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: await Book.countDocuments(query),
+      },
       message: "All books fetched successfully",
     });
   } catch (error) {
@@ -179,4 +229,12 @@ const adminDeleteBook = async (req, res) => {
   }
 };
 
-export { getBooks, getBook, createBook, updateBook, deleteBook, getAllBooks, adminDeleteBook };
+export {
+  getBooks,
+  getBook,
+  createBook,
+  updateBook,
+  deleteBook,
+  getAllBooks,
+  adminDeleteBook,
+};
