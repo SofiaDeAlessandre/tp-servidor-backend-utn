@@ -6,11 +6,13 @@ import { AuthRouter } from "./routes/authRouter.js";
 import { BookRouter } from "./routes/bookRouter.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
+import morgan from "morgan";
 
 const server = express();
 
 server.use(cors());
 server.use(express.json());
+server.use(morgan("dev")); // Logger de HTTP requests
 
 const PORT = process.env.PORT;
 
