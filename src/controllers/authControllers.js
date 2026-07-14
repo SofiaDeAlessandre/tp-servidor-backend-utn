@@ -2,7 +2,7 @@ import { User } from "../models/UserModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const { body } = req;
     const { password, username, email } = body;
@@ -10,9 +10,7 @@ const register = async (req, res) => {
     const foundUser = await User.findOne({ email });
 
     if (foundUser) {
-      return res
-        .status(409)
-        .json({ success: false, error: "Conflict, user already exists" });
+      return res.status(409).json({ success: false, error: "Conflict, user already exists" });
     }
 
     const hashPassword = await bcrypt.hash(password, 10);
@@ -36,20 +34,20 @@ const register = async (req, res) => {
       createdAt: newUser.createdAt,
       updatedAt: newUser.updatedAt,
     };
+
     res.json({
       success: true,
       data: publicDataUser,
       message: "User registered successfully",
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Error registering user" });
+    next(error);
   }
 };
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   try {
     const { body } = req;
-
     const { email, password } = body;
 
     const foundUser = await User.findOne({ email });
@@ -64,8 +62,6 @@ const login = async (req, res) => {
       return res.status(403).json({ success: false, error: "Unauthorized" });
     }
 
-    // TOKEN JWT → Json Web Token
-
     const payload = {
       id: foundUser._id,
       username: foundUser.username,
@@ -78,7 +74,7 @@ const login = async (req, res) => {
 
     res.json({ success: true, data: { token }, message: "Login successful" });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Error logging in" });
+    next(error);
   }
 };
 

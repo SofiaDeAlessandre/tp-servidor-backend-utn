@@ -1,9 +1,6 @@
-// Middleware genérico de validación con Zod
-const validate = (schema) => {
+const validate = (schema, source = "body") => {
   return (req, res, next) => {
-    // safeParse valida sin tirar excepción:
-    // si falla devuelve los errores, si pasa reemplaza el body con los datos ya validados y tipados
-    const result = schema.safeParse(req.body);
+    const result = schema.safeParse(req[source]);
 
     if (!result.success) {
       return res.status(400).json({
@@ -16,7 +13,13 @@ const validate = (schema) => {
       });
     }
 
-    req.body = result.data;
+    // req.query es de solo lectura, se guarda en req.validatedQuery
+    if (source === "query") {
+      req.validatedQuery = result.data;
+    } else {
+      req[source] = result.data;
+    }
+
     next();
   };
 };

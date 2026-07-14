@@ -33,7 +33,7 @@ server.use(authMiddleware);
 // Rutas protegidas
 server.use("/api/books", BookRouter);
 
-// Manejo centralizado de errores — debe ir al final
+// Manejo centralizado de errores 
 server.use(errorHandler);
 
 // Inicia el servidor solo después de conectar a la base de datos

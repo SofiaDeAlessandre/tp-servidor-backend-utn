@@ -1,34 +1,21 @@
 import { Book } from "../models/BookModel.js";
 
 // Obtener TODOS los libros
-
-const getBooks = async (req, res) => {
+const getBooks = async (req, res, next) => {
   try {
     const userLogged = req.userLogged;
-
-    // Query params opcionales
-    const { page = 1, limit = 10, sort = "asc", filter } = req.query;
-
-    // Filtrado base por usuario
+    const { page = 1, limit = 10, sort = "asc", filter } = req.validatedQuery;
     const query = { userId: userLogged.id };
-
-    // Filtrado opcional: ?filter=genre:Fantasía
     if (filter) {
       const [field, value] = filter.split(":");
       query[field] = value;
     }
-
-    // Ordenamiento por título
     const sortOrder = sort === "desc" ? -1 : 1;
-
-    // Paginación
     const skip = (Number(page) - 1) * Number(limit);
-
     const filterBooks = await Book.find(query, { userId: 0 })
       .sort({ title: sortOrder })
       .skip(skip)
       .limit(Number(limit));
-
     res.json({
       success: true,
       data: filterBooks,
@@ -40,157 +27,93 @@ const getBooks = async (req, res) => {
       message: "Books fetched successfully",
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Error fetching books" });
+    next(error);
   }
 };
 
 // Obtener UN libro por su ID
-
-const getBook = async (req, res) => {
+const getBook = async (req, res, next) => {
   try {
     const { id } = req.params;
-    // Protección por usuario:
-    // Verifica que el libro pertenezca al usuario autenticado
-    const foundBook = await Book.findOne(
-      {
-        _id: id,
-        userId: req.userLogged.id,
-      },
-      { userId: 0 },
-    );
-
+    const foundBook = await Book.findOne({ _id: id, userId: req.userLogged.id }, { userId: 0 });
     if (!foundBook) {
-      return res.status(404).json({
-        success: false,
-        error: "Book not found",
-      });
+      return res.status(404).json({ success: false, error: "Book not found" });
     }
-
-    res.json({
-      success: true,
-      data: foundBook,
-    });
+    res.json({ success: true, data: foundBook });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: "Invalid ID format",
-    });
+    next(error);
   }
 };
 
 // Agregar un libro
-
-const createBook = async (req, res) => {
+const createBook = async (req, res, next) => {
   try {
     const body = req.body;
     const userLogged = req.userLogged;
-
     const newBook = await Book.create({
       title: body.title,
       price: body.price,
       genre: body.genre,
       pages: body.pages,
-      read: body.read ?? false, // read no debe depender de pages, el usuario decide si lo leyó
+      read: body.read ?? false,
       userId: userLogged.id,
     });
-
-    // destructuring para eliminar el userId del objeto libro y quedarnos con el resto de la data
     const { userId, ...publicDataBook } = newBook.toObject();
-
-    res.json({
-      success: true,
-      data: publicDataBook,
-      message: "Book created successfully",
-    });
+    res.json({ success: true, data: publicDataBook, message: "Book created successfully" });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Error creating book" });
+    next(error);
   }
 };
 
 // Actualizar un libro por ID
-
-const updateBook = async (req, res) => {
+const updateBook = async (req, res, next) => {
   try {
     const { id } = req.params;
     const body = req.body;
-
-    // Solo permite modificar libros creados por el usuario autenticado
     const updatedBook = await Book.findOneAndUpdate(
-      {
-        _id: id,
-        userId: req.userLogged.id,
-      },
+      { _id: id, userId: req.userLogged.id },
       body,
-      { new: true, projection: { userId: 0 } },
-    ); // pasando body directamente, el usuario manda exactamente lo que quiere actualizar (read es una decisión del usuario, no una consecuencia de otro campo)
-
+      { new: true, projection: { userId: 0 } }
+    );
     if (!updatedBook) {
       return res.status(404).json({ success: false, error: "Book not found" });
     }
-
-    res.json({
-      success: true,
-      data: updatedBook,
-      message: "Book updated successfully",
-    });
+    res.json({ success: true, data: updatedBook, message: "Book updated successfully" });
   } catch (error) {
-    res.status(400).json({ success: false, error: "Invalid ID format" });
+    next(error);
   }
 };
 
 // Eliminar UN libro por su ID
-
-const deleteBook = async (req, res) => {
+const deleteBook = async (req, res, next) => {
   try {
     const { id } = req.params;
-
-    // Solo permite eliminar libros asociados al usuario autenticado
-    const deletedBook = await Book.findOneAndDelete({
-      _id: id,
-      userId: req.userLogged.id,
-    });
-
+    const deletedBook = await Book.findOneAndDelete({ _id: id, userId: req.userLogged.id });
     if (!deletedBook) {
       return res.status(404).json({ success: false, error: "Book not found" });
     }
-
-    // destructuring para eliminar el userId del objeto libro
     const { userId, ...publicDataBook } = deletedBook.toObject();
-
-    res.json({
-      success: true,
-      data: publicDataBook,
-      message: "Book deleted successfully",
-    });
+    res.json({ success: true, data: publicDataBook, message: "Book deleted successfully" });
   } catch (error) {
-    res.status(400).json({ success: false, error: "Invalid ID format" });
+    next(error);
   }
 };
 
 // Obtener TODOS los libros (admin)
-const getAllBooks = async (req, res) => {
+const getAllBooks = async (req, res, next) => {
   try {
-    // Query params opcionales
-    const { page = 1, limit = 10, sort = "asc", filter } = req.query;
-
-    // Filtrado opcional: ?filter=genre:Fantasía
+    const { page = 1, limit = 10, sort = "asc", filter } = req.validatedQuery;
     const query = {};
     if (filter) {
       const [field, value] = filter.split(":");
       query[field] = value;
     }
-
-    // Ordenamiento por título
     const sortOrder = sort === "desc" ? -1 : 1;
-
-    // Paginación
     const skip = (Number(page) - 1) * Number(limit);
-
     const filterBooks = await Book.find(query, { userId: 0 })
       .sort({ title: sortOrder })
       .skip(skip)
       .limit(Number(limit));
-
     res.json({
       success: true,
       data: filterBooks,
@@ -202,39 +125,23 @@ const getAllBooks = async (req, res) => {
       message: "All books fetched successfully",
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Error fetching books" });
+    next(error);
   }
 };
 
 // Eliminar cualquier libro (admin)
-const adminDeleteBook = async (req, res) => {
+const adminDeleteBook = async (req, res, next) => {
   try {
     const { id } = req.params;
-
     const deletedBook = await Book.findByIdAndDelete(id);
-
     if (!deletedBook) {
       return res.status(404).json({ success: false, error: "Book not found" });
     }
-
     const { userId, ...publicDataBook } = deletedBook.toObject();
-
-    res.json({
-      success: true,
-      data: publicDataBook,
-      message: "Book deleted successfully",
-    });
+    res.json({ success: true, data: publicDataBook, message: "Book deleted successfully" });
   } catch (error) {
-    res.status(400).json({ success: false, error: "Invalid ID format" });
+    next(error);
   }
 };
 
-export {
-  getBooks,
-  getBook,
-  createBook,
-  updateBook,
-  deleteBook,
-  getAllBooks,
-  adminDeleteBook,
-};
+export { getBooks, getBook, createBook, updateBook, deleteBook, getAllBooks, adminDeleteBook };
