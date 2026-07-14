@@ -142,4 +142,41 @@ const deleteBook = async (req, res) => {
   }
 };
 
-export { getBooks, getBook, createBook, updateBook, deleteBook };
+// Obtener TODOS los libros (admin)
+const getAllBooks = async (req, res) => {
+  try {
+    const filterBooks = await Book.find({}, { userId: 0 });
+    res.json({
+      success: true,
+      data: filterBooks,
+      message: "All books fetched successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Error fetching books" });
+  }
+};
+
+// Eliminar cualquier libro (admin)
+const adminDeleteBook = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedBook = await Book.findByIdAndDelete(id);
+
+    if (!deletedBook) {
+      return res.status(404).json({ success: false, error: "Book not found" });
+    }
+
+    const { userId, ...publicDataBook } = deletedBook.toObject();
+
+    res.json({
+      success: true,
+      data: publicDataBook,
+      message: "Book deleted successfully",
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: "Invalid ID format" });
+  }
+};
+
+export { getBooks, getBook, createBook, updateBook, deleteBook, getAllBooks, adminDeleteBook };
