@@ -34,16 +34,22 @@ const register = async (req, res) => {
 
     const hashPassword = await bcrypt.hash(password, 10);
 
+    // El primer usuario registrado es admin, el resto son user
+    const usersCount = await User.countDocuments();
+    const role = usersCount === 0 ? "admin" : "user";
+
     const newUser = await User.create({
       username,
       email,
       password: hashPassword,
+      role,
     });
 
     const publicDataUser = {
       id: newUser._id,
       username: newUser.username,
       email: newUser.email,
+      role: newUser.role,
       createdAt: newUser.createdAt,
       updatedAt: newUser.updatedAt,
     };
@@ -85,6 +91,7 @@ const login = async (req, res) => {
       id: foundUser._id,
       username: foundUser.username,
       email: foundUser.email,
+      role: foundUser.role,
     };
     const secretKey = process.env.JWT_SECRET;
 
