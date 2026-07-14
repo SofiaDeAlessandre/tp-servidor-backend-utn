@@ -47,7 +47,8 @@ servidor-backend-utn/
 │   │   └── bookRouter.js
 │   └── validators/
 │       ├── authValidator.js
-│       └── bookValidator.js
+│       ├── bookValidator.js
+│       └── queryValidator.js
 ├── app.js
 ├── .env.example
 ├── .gitignore
@@ -161,7 +162,7 @@ Por seguridad, el rol `admin` se asigna automáticamente al primer usuario regis
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/books/all` | Lista todos los libros de todos los usuarios |
-| DELETE | `/api/books/all/:id` | Elimina cualquier libro |
+| DELETE | `/api/books/:id` | Elimina cualquier libro (admin) o el propio (user) |
 
 ### Query params opcionales
 
@@ -231,6 +232,12 @@ Authorization: Bearer <token>
 ```
 DELETE /api/books/:id
 Authorization: Bearer <token>
+```
+### Eliminar libro (admin — puede borrar cualquier libro)
+
+```
+DELETE /api/books/:id
+Authorization: Bearer <token admin>
 ```
 
 ### Obtener libros con filtros (query params)
