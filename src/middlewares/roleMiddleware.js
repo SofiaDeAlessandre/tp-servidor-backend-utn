@@ -1,3 +1,4 @@
+// checkRole recibe cualquier cantidad de roles permitidos (rest operator) y los agrupa en un array
 const checkRole = (...roles) => {
   return (req, res, next) => {
     const userRole = req.userLogged.role;
